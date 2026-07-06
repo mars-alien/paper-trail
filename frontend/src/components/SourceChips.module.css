@@ -1,0 +1,46 @@
+.container { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; }
+
+.label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s;
+  max-width: 280px;
+}
+.chip:hover { border-color: var(--accent-solid); }
+
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+.source {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-solid);
+  text-transform: uppercase;
+}
+
+.title {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

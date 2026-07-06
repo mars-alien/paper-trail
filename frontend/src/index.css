@@ -1,0 +1,73 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --page-bg:        radial-gradient(circle at 18% 0%, oklch(97% 0.025 150) 0%, oklch(98.2% 0.01 150) 45%, oklch(98.5% 0.005 150) 100%);
+  --nav-bg:         #ffffff;
+  --nav-border:     1px solid oklch(92% 0.015 150);
+  --nav-shadow:     none;
+  --nav-text:       oklch(20% 0.02 150);
+  --nav-sub:        oklch(48% 0.02 150);
+  --nav-icon-bg:    oklch(95% 0.01 150);
+  --nav-icon-color: oklch(40% 0.02 150);
+  --sidebar-bg:     oklch(98.5% 0.012 150);
+  --card-bg:        oklch(98.5% 0.012 150);
+  --card-border:    1px solid oklch(93% 0.015 150);
+  --card-shadow:    0 1px 3px oklch(20% 0.02 150 / 0.06);
+  --accent-grad:    linear-gradient(135deg, oklch(58% 0.15 150), oklch(64% 0.15 140));
+  --accent-solid:   oklch(50% 0.15 150);
+  --hero-icon-bg:   linear-gradient(135deg, oklch(95% 0.035 150), oklch(92% 0.05 140));
+  --user-bubble:    linear-gradient(135deg, oklch(58% 0.15 150), oklch(64% 0.15 140));
+  --asst-bubble:    oklch(98.5% 0.012 150);
+  --text:           oklch(20% 0.02 150);
+  --muted:          oklch(52% 0.02 150);
+  --border:         oklch(92% 0.01 150);
+  --input-bg:       oklch(97.5% 0.005 150);
+  --surface:        #ffffff;
+  --radius:         12px;
+  --shadow:         var(--card-shadow);
+  /* legacy aliases used by some components */
+  --bg:             oklch(98.5% 0.012 150);
+  --surface2:       oklch(97.5% 0.005 150);
+  --accent:         oklch(50% 0.15 150);
+  --accent-h:       oklch(45% 0.15 150);
+}
+
+[data-theme="b"] {
+  --page-bg:        linear-gradient(160deg, oklch(96% 0.035 150) 0%, oklch(94% 0.05 155) 50%, oklch(96% 0.03 145) 100%);
+  --nav-bg:         linear-gradient(120deg, oklch(55% 0.15 150), oklch(64% 0.16 140));
+  --nav-border:     none;
+  --nav-shadow:     0 4px 22px oklch(45% 0.13 150 / 0.28);
+  --nav-text:       #ffffff;
+  --nav-sub:        oklch(95% 0.02 150);
+  --nav-icon-bg:    oklch(100% 0 0 / 0.18);
+  --nav-icon-color: #ffffff;
+  --sidebar-bg:     oklch(99% 0.006 150 / 0.85);
+  --card-bg:        oklch(99% 0.006 150 / 0.72);
+  --card-border:    1px solid oklch(100% 0 0 / 0.55);
+  --card-shadow:    0 10px 26px oklch(45% 0.1 150 / 0.14);
+  --accent-grad:    linear-gradient(135deg, oklch(55% 0.15 150), oklch(64% 0.16 140));
+  --accent-solid:   oklch(48% 0.15 150);
+  --hero-icon-bg:   linear-gradient(135deg, oklch(55% 0.15 150), oklch(64% 0.16 140));
+  --user-bubble:    linear-gradient(135deg, oklch(55% 0.15 150), oklch(64% 0.16 140));
+  --asst-bubble:    oklch(99% 0.006 150 / 0.82);
+  --accent:         oklch(48% 0.15 150);
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: oklch(85% 0.02 150); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+button { cursor: pointer; border: none; background: none; font: inherit; color: inherit; }
+input, textarea, select { font: inherit; color: inherit; }
+a { color: inherit; }
+
+@keyframes ragFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ragPulse  { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+@keyframes bounce    { 0%,80%,100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }

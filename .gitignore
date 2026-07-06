@@ -1,0 +1,32 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# Environment files
+backend/.env
+backend/.env.*
+.env
+.env.*
+!.env.example
+!backend/.env.example
+
+# Local databases and generated data
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+
+# Node / Vite   
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.claude/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
