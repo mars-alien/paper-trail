@@ -28,8 +28,9 @@ from retriever import diversify_hits, hybrid_retrieve, rerank_hits, _get_cross_e
 
 load_dotenv()
 
-WEAVIATE_URL    = os.getenv("WEAVIATE_URL", "http://localhost:8080")
-COLLECTION_NAME = "NewsChunk"
+WEAVIATE_URL     = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY", "")
+COLLECTION_NAME  = "NewsChunk"
 JUDGE_MODEL     = "llama-3.3-70b-versatile"
 
 EVAL_QUESTIONS = [
@@ -165,9 +166,15 @@ def bar(score: float, width: int = 20) -> str:
 
 def main():
     print("Connecting to Weaviate...")
-    host = WEAVIATE_URL.replace("http://", "").split(":")[0]
-    port = int(WEAVIATE_URL.split(":")[-1])
-    wv   = weaviate.connect_to_local(host=host, port=port)
+    if WEAVIATE_API_KEY:
+        wv = weaviate.connect_to_weaviate_cloud(
+            cluster_url      = WEAVIATE_URL,
+            auth_credentials = weaviate.auth.AuthApiKey(WEAVIATE_API_KEY),
+        )
+    else:
+        host = WEAVIATE_URL.replace("http://", "").split(":")[0]
+        port = int(WEAVIATE_URL.split(":")[-1])
+        wv   = weaviate.connect_to_local(host=host, port=port)
 
     try:
         collection = wv.collections.get(COLLECTION_NAME)

@@ -37,8 +37,9 @@ from chunker         import chunk_sections
 
 load_dotenv()
 
-WEAVIATE_URL    = os.getenv("WEAVIATE_URL", "http://localhost:8080")
-COLLECTION_NAME = "NewsChunk"
+WEAVIATE_URL     = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY", "")
+COLLECTION_NAME  = "NewsChunk"
 
 wv: weaviate.WeaviateClient = None  # type: ignore
 
@@ -90,9 +91,15 @@ def _clear_all_data() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global wv
-    host = WEAVIATE_URL.replace("http://", "").split(":")[0]
-    port = int(WEAVIATE_URL.split(":")[-1])
-    wv   = weaviate.connect_to_local(host=host, port=port)
+    if WEAVIATE_API_KEY:
+        wv = weaviate.connect_to_weaviate_cloud(
+            cluster_url = WEAVIATE_URL,
+            auth_credentials = weaviate.auth.AuthApiKey(WEAVIATE_API_KEY),
+        )
+    else:
+        host = WEAVIATE_URL.replace("http://", "").split(":")[0]
+        port = int(WEAVIATE_URL.split(":")[-1])
+        wv   = weaviate.connect_to_local(host=host, port=port)
     # Only clear if Docker was restarted (collection missing) or SQLite is empty
     db_has_articles = len(list_articles()) > 0
     weaviate_has_collection = wv.collections.exists(COLLECTION_NAME)
@@ -110,9 +117,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="News RAG API", lifespan=lifespan)
 
+_frontend_url = os.getenv("FRONTEND_URL", "*")
+_origins = [_frontend_url] if _frontend_url != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins     = ["*"],
+    allow_origins     = _origins,
     allow_credentials = True,
     allow_methods     = ["*"],
     allow_headers     = ["*"],
