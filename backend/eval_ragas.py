@@ -136,12 +136,12 @@ Return JSON: {{"score": <float 0.0-1.0>, "reason": "<one sentence stating how ma
     return judge(prompt)
 
 
-def get_answer_and_contexts(collection, question: str) -> tuple[str, list[str]]:
+def get_answer_and_contexts(wv_client, question: str) -> tuple[str, list[str]]:
     intent       = detect_intent(question)
     model        = get_model_for_intent(intent)
     query_vector = embed_query(question)
 
-    hits = hybrid_retrieve(collection, query_text=question, query_vector=query_vector, top_k=24)
+    hits = hybrid_retrieve(wv_client, COLLECTION_NAME, query_text=question, query_vector=query_vector, top_k=24)
     hits = diversify_hits(hits, max_per_doc=3)
     hits = rerank_hits(hits, question)
 
@@ -166,26 +166,20 @@ def bar(score: float, width: int = 20) -> str:
 
 def main():
     print("Connecting to Weaviate...")
-    if WEAVIATE_API_KEY:
-        from weaviate.classes.init import Auth
-        wv = weaviate.connect_to_weaviate_cloud(
-            cluster_url      = WEAVIATE_URL,
-            auth_credentials = Auth.api_key(WEAVIATE_API_KEY),
-            skip_init_checks = True,
-        )
-    else:
-        host = WEAVIATE_URL.replace("http://", "").split(":")[0]
-        port = int(WEAVIATE_URL.split(":")[-1])
-        wv   = weaviate.connect_to_local(host=host, port=port)
+    auth = weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY) if WEAVIATE_API_KEY else None
+    wv   = weaviate.Client(
+        url                = WEAVIATE_URL,
+        auth_client_secret = auth,
+        timeout_config     = (5, 60),
+    )
 
     try:
-        collection = wv.collections.get(COLLECTION_NAME)
 
         results = []
         for i, question in enumerate(EVAL_QUESTIONS, 1):
             print(f"\n[{i}/{len(EVAL_QUESTIONS)}] {question}")
 
-            answer, chunks = get_answer_and_contexts(collection, question)
+            answer, chunks = get_answer_and_contexts(wv, question)
             print(f"  Answer: {answer[:100]}...")
 
             print("  Scoring faithfulness...")

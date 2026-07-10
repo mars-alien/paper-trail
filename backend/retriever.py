@@ -14,13 +14,14 @@ BM25 field weights
 
 from __future__ import annotations
 
-from weaviate.classes.query import HybridFusion, MetadataQuery
-
 ALPHA        = 0.65   # dense weight (0.35 = BM25)
 CANDIDATE_K  = 24     # candidates before reranking
 RERANK_TOP_N = 6      # final results after reranking
 
-_BM25_PROPS = ["text", "section^2", "title^1.5"]
+_PROPERTIES = [
+    "doc_id", "url", "title", "source_domain",
+    "author", "published_date", "section", "text", "chunk_index",
+]
 
 _cross_encoder = None
 
@@ -34,35 +35,40 @@ def _get_cross_encoder():
 
 
 def hybrid_retrieve(
-    collection,
-    query_text:   str,
-    query_vector: list[float],
-    top_k:        int = CANDIDATE_K,
+    wv_client,
+    collection_name: str,
+    query_text:      str,
+    query_vector:    list[float],
+    top_k:           int = CANDIDATE_K,
 ) -> list[dict]:
     """Hybrid BM25 + HNSW search across all ingested articles."""
-    kwargs = dict(
-        query            = query_text,
-        vector           = query_vector,
-        alpha            = ALPHA,
-        fusion_type      = HybridFusion.RANKED,
-        query_properties = _BM25_PROPS,
-        limit            = top_k,
-        return_metadata  = MetadataQuery(score=True),
+    result = (
+        wv_client.query
+        .get(collection_name, _PROPERTIES)
+        .with_hybrid(
+            query             = query_text,
+            vector            = query_vector,
+            alpha             = ALPHA,
+            query_properties  = ["text", "section^2", "title^1.5"],
+        )
+        .with_limit(top_k)
+        .with_additional(["score"])
+        .do()
     )
-    result = collection.query.hybrid(**kwargs)
 
+    objects = result.get("data", {}).get("Get", {}).get(collection_name, []) or []
     return [
-        {**{k: str(v) if not isinstance(v, (int, float, bool)) else v
-            for k, v in hit.properties.items()},
-         "_hybrid_score": round(hit.metadata.score or 0.0, 6)}
-        for hit in result.objects
+        {**{k: str(v) if not isinstance(v, (int, float, bool, type(None))) else v
+            for k, v in obj.items() if k != "_additional"},
+         "_hybrid_score": round(float(obj.get("_additional", {}).get("score", 0) or 0), 6)}
+        for obj in objects
     ]
 
 
 def diversify_hits(hits: list[dict], max_per_doc: int = 3) -> list[dict]:
     """Cap chunks per article so multiple articles are always represented."""
     seen: dict[str, int] = {}
-    out: list[dict] = []
+    out:  list[dict]     = []
     for h in hits:
         key   = h.get("doc_id", "")
         count = seen.get(key, 0)

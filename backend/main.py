@@ -24,8 +24,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from weaviate.classes.config import Configure, DataType, Property, VectorDistances
-from weaviate.classes.query import Filter
 
 from database        import init_db, track_article, delete_article, list_articles, is_ingested
 from embedder        import embed_query, embed_texts
@@ -41,71 +39,56 @@ WEAVIATE_URL     = os.getenv("WEAVIATE_URL", "http://localhost:8080")
 WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY", "")
 COLLECTION_NAME  = "NewsChunk"
 
-wv: weaviate.WeaviateClient = None  # type: ignore
+wv: weaviate.Client = None  # type: ignore
 
 
 def _connect_weaviate() -> None:
     global wv
     if wv is not None:
         return
-    if WEAVIATE_API_KEY:
-        from weaviate.classes.init import Auth
-        wv = weaviate.connect_to_weaviate_cloud(
-            cluster_url      = WEAVIATE_URL,
-            auth_credentials = Auth.api_key(WEAVIATE_API_KEY),
-            skip_init_checks = True,
+    try:
+        auth = weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY) if WEAVIATE_API_KEY else None
+        wv = weaviate.Client(
+            url                = WEAVIATE_URL,
+            auth_client_secret = auth,
+            timeout_config     = (5, 60),
         )
-    else:
-        host = WEAVIATE_URL.replace("http://", "").split(":")[0]
-        port = int(WEAVIATE_URL.split(":")[-1])
-        wv   = weaviate.connect_to_local(host=host, port=port)
-    _ensure_collection()
-    print("[weaviate] Connected.")
-
-
-def get_collection():
-    _connect_weaviate()
-    return wv.collections.get(COLLECTION_NAME)
+        _ensure_collection()
+        print("[weaviate] Connected.")
+    except Exception as e:
+        wv = None
+        print(f"[weaviate] Connection failed: {e}")
+        raise HTTPException(503, "Vector database unavailable. It may be paused — check Weaviate Cloud dashboard.")
 
 
 def _ensure_collection() -> None:
-    if wv.collections.exists(COLLECTION_NAME):
+    if wv.schema.exists(COLLECTION_NAME):
         return
-    wv.collections.create(
-        name        = COLLECTION_NAME,
-        description = "News article chunks for RAG",
-        vector_index_config = Configure.VectorIndex.hnsw(
-            distance_metric = VectorDistances.COSINE,
-            ef_construction = 256,
-            max_connections = 16,
-            ef              = 128,
-        ),
-        inverted_index_config = Configure.inverted_index(
-            bm25_b  = 0.4,
-            bm25_k1 = 1.5,
-        ),
-        properties = [
-            Property(name="doc_id",         data_type=DataType.TEXT),
-            Property(name="url",            data_type=DataType.TEXT),
-            Property(name="title",          data_type=DataType.TEXT),
-            Property(name="source_domain",  data_type=DataType.TEXT),
-            Property(name="author",         data_type=DataType.TEXT),
-            Property(name="published_date", data_type=DataType.TEXT),
-            Property(name="section",        data_type=DataType.TEXT),
-            Property(name="text",           data_type=DataType.TEXT),
-            Property(name="chunk_index",    data_type=DataType.INT),
+    wv.schema.create_class({
+        "class": COLLECTION_NAME,
+        "description": "News article chunks for RAG",
+        "vectorIndexConfig": {
+            "distance": "cosine",
+            "efConstruction": 256,
+            "maxConnections": 16,
+            "ef": 128,
+        },
+        "invertedIndexConfig": {
+            "bm25": {"b": 0.4, "k1": 1.5}
+        },
+        "properties": [
+            {"name": "doc_id",         "dataType": ["text"]},
+            {"name": "url",            "dataType": ["text"]},
+            {"name": "title",          "dataType": ["text"]},
+            {"name": "source_domain",  "dataType": ["text"]},
+            {"name": "author",         "dataType": ["text"]},
+            {"name": "published_date", "dataType": ["text"]},
+            {"name": "section",        "dataType": ["text"]},
+            {"name": "text",           "dataType": ["text"]},
+            {"name": "chunk_index",    "dataType": ["int"]},
         ],
-    )
-    print(f"[startup] Created Weaviate collection '{COLLECTION_NAME}'")
-
-
-def _clear_all_data() -> None:
-    """Delete all chunks from Weaviate and clear the SQLite article table."""
-    try:
-        wv.collections.delete(COLLECTION_NAME)
-        print("[startup] Cleared previous session data.")
-    except Exception:
-        pass
+    })
+    print(f"[weaviate] Created collection '{COLLECTION_NAME}'")
 
 
 @asynccontextmanager
@@ -113,18 +96,13 @@ async def lifespan(app: FastAPI):
     init_db(reset=False)
     print("[startup] Ready.")
     yield
-    if wv is not None:
-        wv.close()
 
 
 app = FastAPI(title="News RAG API", lifespan=lifespan)
 
-_frontend_url = os.getenv("FRONTEND_URL", "*")
-_origins = [_frontend_url] if _frontend_url != "*" else ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins     = _origins,
+    allow_origins     = ["*"],
     allow_credentials = True,
     allow_methods     = ["*"],
     allow_headers     = ["*"],
@@ -149,8 +127,8 @@ def ingest(body: IngestRequest):
     if not body.urls:
         raise HTTPException(400, "No URLs provided.")
 
-    results    = []
-    collection = get_collection()
+    _connect_weaviate()
+    results = []
 
     for url in body.urls:
         url = url.strip()
@@ -167,9 +145,9 @@ def ingest(body: IngestRequest):
             results.append({"url": url, "status": "failed", "error": "Could not extract article content."})
             continue
 
-        doc_id     = str(uuid.uuid5(uuid.NAMESPACE_URL, url))
-        sections   = article_to_sections(article)
-        chunks     = chunk_sections(sections)
+        doc_id   = str(uuid.uuid5(uuid.NAMESPACE_URL, url))
+        sections = article_to_sections(article)
+        chunks   = chunk_sections(sections)
 
         if not chunks:
             results.append({"url": url, "status": "failed", "error": "No text chunks produced."})
@@ -179,10 +157,11 @@ def ingest(body: IngestRequest):
         embeddings = embed_texts(texts)
 
         inserted = 0
-        with collection.batch.fixed_size(batch_size=200) as batch:
+        with wv.batch(batch_size=200) as batch:
             for chunk, vec in zip(chunks, embeddings):
                 batch.add_object(
-                    properties={
+                    class_name  = COLLECTION_NAME,
+                    properties  = {
                         "doc_id":         doc_id,
                         "url":            url,
                         "title":          article["title"],
@@ -193,8 +172,8 @@ def ingest(body: IngestRequest):
                         "text":           chunk["text"],
                         "chunk_index":    chunk["chunk_index"],
                     },
-                    vector=vec,
-                    uuid=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{doc_id}:{chunk['chunk_index']}")),
+                    vector      = vec,
+                    uuid        = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{doc_id}:{chunk['chunk_index']}")),
                 )
                 inserted += 1
 
@@ -227,13 +206,16 @@ def query(body: QueryRequest):
     if not body.question.strip():
         raise HTTPException(400, "Question cannot be empty.")
 
+    _connect_weaviate()
+
     t0     = time.time()
     intent = detect_intent(body.question)
     model  = get_model_for_intent(intent)
 
     query_vector = embed_query(body.question)
     hits = hybrid_retrieve(
-        get_collection(),
+        wv,
+        COLLECTION_NAME,
         query_text   = body.question,
         query_vector = query_vector,
         top_k        = 24,
@@ -259,7 +241,7 @@ def query(body: QueryRequest):
         )
 
     prompt = (
-        f"News article excerpts:\n\n"
+        "News article excerpts:\n\n"
         + "\n\n---\n\n".join(context_parts)
         + f"\n\n---\n\nQuestion: {body.question}"
     )
@@ -298,9 +280,15 @@ def articles():
 
 @app.delete("/articles/{doc_id}")
 def remove_article(doc_id: str):
+    _connect_weaviate()
     try:
-        get_collection().data.delete_many(
-            where=Filter.by_property("doc_id").equal(doc_id)
+        wv.batch.delete_objects(
+            class_name = COLLECTION_NAME,
+            where      = {
+                "path":     ["doc_id"],
+                "operator": "Equal",
+                "valueText": doc_id,
+            },
         )
     except Exception as e:
         raise HTTPException(500, f"Failed to delete from Weaviate: {e}")
@@ -317,7 +305,7 @@ def starters():
 @app.get("/health")
 def health():
     try:
-        wv.is_ready()
+        _connect_weaviate()
         return {"status": "ok", "collection": COLLECTION_NAME}
     except Exception as exc:
         raise HTTPException(503, str(exc))
