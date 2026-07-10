@@ -16,7 +16,7 @@ def _conn() -> sqlite3.Connection:
     return conn
 
 
-def init_db() -> None:
+def init_db(reset: bool = False) -> None:
     with _conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS articles (
@@ -30,6 +30,8 @@ def init_db() -> None:
                 ingested_at    TEXT DEFAULT (datetime('now'))
             )
         """)
+        if reset:
+            conn.execute("DELETE FROM articles")
         conn.commit()
 
 

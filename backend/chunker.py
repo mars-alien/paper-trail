@@ -1,9 +1,9 @@
 """
-chunker.py — Split PDF sections into fixed-size overlapping chunks.
+chunker.py — Split article sections into fixed-size overlapping chunks.
 
-Government brochure sections can be very long (e.g., 5000+ chars for seat
-allotment procedures). We split at sentence boundaries to keep chunks under
-MAX_CHARS, with OVERLAP_CHARS of sliding overlap so context is not lost.
+Sections can be long paragraphs. We split at sentence boundaries to keep
+chunks under MAX_CHARS, with OVERLAP_CHARS of sliding overlap so context
+is not lost at chunk boundaries.
 """
 
 from __future__ import annotations

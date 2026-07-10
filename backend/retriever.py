@@ -1,10 +1,9 @@
 """
-retriever.py — Hybrid retrieval + cross-encoder reranking for counselling RAG.
+retriever.py — Hybrid retrieval + cross-encoder reranking for PaperTrail.
 
 Pipeline
-  1. hybrid_retrieve()  — BM25 (30%) + HNSW (70%) via Weaviate, top CANDIDATE_K=20
-  2. diversify_hits()   — cap chunks per (source, year) pair to prevent one
-                          document flooding all candidate slots
+  1. hybrid_retrieve()  — BM25 (35%) + HNSW (65%) via Weaviate, top CANDIDATE_K=24
+  2. diversify_hits()   — cap chunks per article to prevent one doc flooding results
   3. rerank_hits()      — cross-encoder ms-marco-MiniLM-L-6-v2, keep top 6
 
 BM25 field weights
@@ -15,11 +14,11 @@ BM25 field weights
 
 from __future__ import annotations
 
-from weaviate.classes.query import Filter, HybridFusion, MetadataQuery
+from weaviate.classes.query import HybridFusion, MetadataQuery
 
 ALPHA        = 0.65   # dense weight (0.35 = BM25)
 CANDIDATE_K  = 24     # candidates before reranking
-RERANK_TOP_N = 6      # final results shown to student
+RERANK_TOP_N = 6      # final results after reranking
 
 _BM25_PROPS = ["text", "section^2", "title^1.5"]
 
@@ -38,25 +37,9 @@ def hybrid_retrieve(
     collection,
     query_text:   str,
     query_vector: list[float],
-    source:       str | None = None,
-    year:         int | None = None,
-    top_k:        int        = CANDIDATE_K,
+    top_k:        int = CANDIDATE_K,
 ) -> list[dict]:
-    """
-    Hybrid BM25 + HNSW search with optional source/year filters.
-
-    Parameters
-    ----------
-    source : "josaa" | "neet" | None  — filter to a specific counselling body
-    year   : 2020-2024 | None         — filter to a specific year
-    """
-    filters = None
-    if source:
-        filters = Filter.by_property("source").equal(source)
-    if year:
-        year_filter = Filter.by_property("year").equal(year)
-        filters = (filters & year_filter) if filters else year_filter
-
+    """Hybrid BM25 + HNSW search across all ingested articles."""
     kwargs = dict(
         query            = query_text,
         vector           = query_vector,
@@ -66,13 +49,12 @@ def hybrid_retrieve(
         limit            = top_k,
         return_metadata  = MetadataQuery(score=True),
     )
-    if filters:
-        kwargs["filters"] = filters
-
     result = collection.query.hybrid(**kwargs)
 
     return [
-        {**hit.properties, "_hybrid_score": round(hit.metadata.score or 0.0, 6)}
+        {**{k: str(v) if not isinstance(v, (int, float, bool)) else v
+            for k, v in hit.properties.items()},
+         "_hybrid_score": round(hit.metadata.score or 0.0, 6)}
         for hit in result.objects
     ]
 

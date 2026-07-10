@@ -27,7 +27,7 @@ export default function App() {
   const isMobile                      = useIsMobile()
   const [mobileOpen, setMobileOpen]   = useState(false)   // mobile drawer
   const [collapsed, setCollapsed]     = useState(false)   // desktop rail
-  const { messages, loading, sendMessage, clearChat } = useChat()
+  const { messages, loading, sendMessage } = useChat()
   const bottomRef = useRef(null)
 
   // close mobile drawer when switching to desktop

@@ -78,14 +78,29 @@ def _ensure_collection() -> None:
     print(f"[startup] Created Weaviate collection '{COLLECTION_NAME}'")
 
 
+def _clear_all_data() -> None:
+    """Delete all chunks from Weaviate and clear the SQLite article table."""
+    try:
+        wv.collections.delete(COLLECTION_NAME)
+        print("[startup] Cleared previous session data.")
+    except Exception:
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global wv
     host = WEAVIATE_URL.replace("http://", "").split(":")[0]
     port = int(WEAVIATE_URL.split(":")[-1])
     wv   = weaviate.connect_to_local(host=host, port=port)
-    _ensure_collection()
-    init_db()
+    # Only clear if Docker was restarted (collection missing) or SQLite is empty
+    db_has_articles = len(list_articles()) > 0
+    weaviate_has_collection = wv.collections.exists(COLLECTION_NAME)
+    if not weaviate_has_collection or not db_has_articles:
+        _clear_all_data()
+        init_db(reset=True)
+    else:
+        init_db(reset=False)
     embed_query("warmup")
     _get_cross_encoder()
     print("[startup] Ready.")
@@ -242,11 +257,11 @@ def query(body: QueryRequest):
 
     sources = [
         {
-            "doc_id": h.get("doc_id", ""),
-            "url":    h.get("url", ""),
-            "title":  h.get("title", ""),
-            "source": h.get("source_domain", ""),
-            "date":   h.get("published_date", ""),
+            "doc_id": str(h.get("doc_id", "")),
+            "url":    str(h.get("url", "")),
+            "title":  str(h.get("title", "")),
+            "source": str(h.get("source_domain", "")),
+            "date":   str(h.get("published_date", "")),
             "score":  round(h.get("_rerank_score", 0), 4),
         }
         for h in hits

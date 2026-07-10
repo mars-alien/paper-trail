@@ -33,13 +33,15 @@ COLLECTION_NAME = "NewsChunk"
 JUDGE_MODEL     = "llama-3.3-70b-versatile"
 
 EVAL_QUESTIONS = [
-    "Who is Abhijeet Dipke and what did he create?",
-    "What is the Cockroach Janta Party and why was it formed?",
-    "What are the protesters at Jantar Mantar demanding?",
-    "Why is the NEET-UG exam controversial and what happened to it?",
-    "Who is Sonam Wangchuk and what role did he play in the protests?",
-    "What does the memorial wall at the protest site represent?",
-    "How large is CJP's social media following and what does it stand for?",
+    # Sensex/Nifty crash article
+    "Why did Sensex crash 1500 points and Nifty fall below 24,000?",
+    "Which stocks were buzzing during the market crash session?",
+    "What happened to Kalyan Jewellers stock during the market fall?",
+    "What were the key factors driving the sell-off in the stock market?",
+    # Mumbai rain article
+    "Why did Mumbai shut schools and colleges?",
+    "What alert did IMD issue for Mumbai and what does it mean?",
+    "Which areas or infrastructure were affected by the heavy rain in Mumbai?",
 ]
 
 _groq: Groq | None = None
@@ -116,20 +118,19 @@ Return JSON: {{"score": <float 0-1>, "reason": "<one sentence>"}}
 
 def score_context_precision(question: str, contexts: list[str]) -> dict:
     context_block = "\n\n".join(f"[{i+1}] {c}" for i, c in enumerate(contexts))
+    n = len(contexts)
     prompt = f"""
 You are evaluating whether retrieved context chunks are relevant to the question.
 
 QUESTION: {question}
 
-RETRIEVED CONTEXT:
+RETRIEVED CONTEXT ({n} chunks):
 {context_block}
 
-Task: Score how relevant these chunks are for answering the question.
-- 1.0 = all chunks are highly relevant
-- 0.5 = mixed — some relevant, some noise
-- 0.0 = chunks are completely unrelated to the question
+Task: For each chunk, decide if it is relevant (1) or not relevant (0) to the question.
+Then compute: score = (number of relevant chunks) / (total chunks).
 
-Return JSON: {{"score": <float 0-1>, "reason": "<one sentence>"}}
+Return JSON: {{"score": <float 0.0-1.0>, "reason": "<one sentence stating how many of {n} chunks were relevant>"}}
 """
     return judge(prompt)
 
