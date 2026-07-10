@@ -108,8 +108,6 @@ async def lifespan(app: FastAPI):
         init_db(reset=True)
     else:
         init_db(reset=False)
-    embed_query("warmup")
-    _get_cross_encoder()
     print("[startup] Ready.")
     yield
     wv.close()
