@@ -44,7 +44,27 @@ COLLECTION_NAME  = "NewsChunk"
 wv: weaviate.WeaviateClient = None  # type: ignore
 
 
+def _connect_weaviate() -> None:
+    global wv
+    if wv is not None:
+        return
+    if WEAVIATE_API_KEY:
+        from weaviate.classes.init import Auth
+        wv = weaviate.connect_to_weaviate_cloud(
+            cluster_url      = WEAVIATE_URL,
+            auth_credentials = Auth.api_key(WEAVIATE_API_KEY),
+            skip_init_checks = True,
+        )
+    else:
+        host = WEAVIATE_URL.replace("http://", "").split(":")[0]
+        port = int(WEAVIATE_URL.split(":")[-1])
+        wv   = weaviate.connect_to_local(host=host, port=port)
+    _ensure_collection()
+    print("[weaviate] Connected.")
+
+
 def get_collection():
+    _connect_weaviate()
     return wv.collections.get(COLLECTION_NAME)
 
 
@@ -90,29 +110,11 @@ def _clear_all_data() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global wv
-    if WEAVIATE_API_KEY:
-        from weaviate.classes.init import Auth
-        wv = weaviate.connect_to_weaviate_cloud(
-            cluster_url      = WEAVIATE_URL,
-            auth_credentials = Auth.api_key(WEAVIATE_API_KEY),
-            skip_init_checks = True,
-        )
-    else:
-        host = WEAVIATE_URL.replace("http://", "").split(":")[0]
-        port = int(WEAVIATE_URL.split(":")[-1])
-        wv   = weaviate.connect_to_local(host=host, port=port)
-    # Only clear if Docker was restarted (collection missing) or SQLite is empty
-    db_has_articles = len(list_articles()) > 0
-    weaviate_has_collection = wv.collections.exists(COLLECTION_NAME)
-    if not weaviate_has_collection or not db_has_articles:
-        _clear_all_data()
-        init_db(reset=True)
-    else:
-        init_db(reset=False)
+    init_db(reset=False)
     print("[startup] Ready.")
     yield
-    wv.close()
+    if wv is not None:
+        wv.close()
 
 
 app = FastAPI(title="News RAG API", lifespan=lifespan)
