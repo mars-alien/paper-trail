@@ -28,8 +28,8 @@ _cross_encoder = None
 def _get_cross_encoder():
     global _cross_encoder
     if _cross_encoder is None:
-        from sentence_transformers import CrossEncoder
-        _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        from fastembed.rerank.cross_encoder import TextCrossEncoder
+        _cross_encoder = TextCrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
     return _cross_encoder
 
 
@@ -77,11 +77,12 @@ def rerank_hits(hits: list[dict], question: str, top_n: int = RERANK_TOP_N) -> l
     if not hits:
         return hits
     try:
-        ce     = _get_cross_encoder()
-        pairs  = [(question, h["text"]) for h in hits]
-        scores = ce.predict(pairs)
-        for hit, score in zip(hits, scores):
-            hit["_rerank_score"] = float(score)
+        ce      = _get_cross_encoder()
+        docs    = [h["text"] for h in hits]
+        results = list(ce.rerank(question, docs, top_n=top_n))
+        scored  = {r.index: r.score for r in results}
+        for i, hit in enumerate(hits):
+            hit["_rerank_score"] = float(scored.get(i, 0.0))
         return sorted(hits, key=lambda h: h["_rerank_score"], reverse=True)[:top_n]
     except Exception as exc:
         print(f"[rerank] failed ({exc}), using hybrid order")

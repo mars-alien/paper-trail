@@ -44,11 +44,11 @@ Question ──► Embed ──► Hybrid Retrieve ──► Rerank ──► Gr
 |------|------|--------|
 | Scrape | trafilatura | Extracts clean article text from any news URL |
 | Chunk | sentence-boundary | ~300 tokens / 1200 chars per chunk, with section labels |
-| Embed | BAAI/bge-small-en-v1.5 | 384-dim dense vectors |
+| Embed | BAAI/bge-small-en-v1.5 (fastembed) | 384-dim dense vectors, ONNX Runtime |
 | Store | Weaviate | HNSW (ef=128) + BM25 (k1=1.5, b=0.4) dual index |
 | Retrieve | Hybrid | alpha=0.65 dense + 0.35 BM25, top 24 candidates |
 | Diversify | custom | Max 3 chunks per article to prevent one doc flooding results |
-| Rerank | ms-marco-MiniLM-L-6-v2 | Cross-encoder scores, keeps top 6 |
+| Rerank | ms-marco-MiniLM-L-6-v2 (fastembed) | Cross-encoder scores, keeps top 6 |
 | Generate | Groq API | Llama 3.3 70B / DeepSeek-R1, SSE streaming |
 
 ---
@@ -60,8 +60,8 @@ Question ──► Embed ──► Hybrid Retrieve ──► Rerank ──► Gr
 | Frontend | React 18 + Vite + CSS Modules |
 | Backend | FastAPI + Python 3.10+ |
 | Vector DB | Weaviate (Docker) |
-| Embeddings | BAAI/bge-small-en-v1.5 (sentence-transformers) |
-| Reranker | ms-marco-MiniLM-L-6-v2 (cross-encoder) |
+| Embeddings | BAAI/bge-small-en-v1.5 (fastembed / ONNX) |
+| Reranker | ms-marco-MiniLM-L-6-v2 (fastembed / ONNX) |
 | LLM | Groq API (Llama 3.3 70B + DeepSeek-R1) |
 | Scraper | trafilatura |
 | Metadata DB | SQLite |
@@ -98,7 +98,7 @@ paper-trail/
 │   └── vite.config.js           # Proxies /api → localhost:8000
 ├── docker-compose.yml           # Weaviate vector database
 └── docs/
-    └── screenshot.png
+    └── Application-Snapshot.png
 ```
 
 ---

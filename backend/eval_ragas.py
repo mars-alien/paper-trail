@@ -24,7 +24,7 @@ from groq import Groq
 from embedder import embed_query
 from llm import SYSTEM_PROMPT, stream_with_context, get_model_for_intent
 from query_processor import detect_intent
-from retriever import diversify_hits, hybrid_retrieve, rerank_hits, _get_cross_encoder
+from retriever import diversify_hits, hybrid_retrieve, rerank_hits
 
 load_dotenv()
 
@@ -178,7 +178,6 @@ def main():
 
     try:
         collection = wv.collections.get(COLLECTION_NAME)
-        _get_cross_encoder()
 
         results = []
         for i, question in enumerate(EVAL_QUESTIONS, 1):

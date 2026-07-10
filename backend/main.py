@@ -31,7 +31,7 @@ from database        import init_db, track_article, delete_article, list_article
 from embedder        import embed_query, embed_texts
 from llm             import SYSTEM_PROMPT, get_model_for_intent, stream_with_context
 from query_processor import STARTER_QUESTIONS, detect_intent
-from retriever       import diversify_hits, hybrid_retrieve, rerank_hits, _get_cross_encoder
+from retriever       import diversify_hits, hybrid_retrieve, rerank_hits
 from scraper         import scrape_article, article_to_sections
 from chunker         import chunk_sections
 
