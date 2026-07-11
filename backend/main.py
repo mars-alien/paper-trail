@@ -292,8 +292,7 @@ def remove_article(doc_id: str):
         )
     except Exception as e:
         raise HTTPException(500, f"Failed to delete from Weaviate: {e}")
-    if not delete_article(doc_id):
-        raise HTTPException(404, "Article not found.")
+    delete_article(doc_id)
     return {"status": "deleted", "doc_id": doc_id}
 
 
