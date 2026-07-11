@@ -46,10 +46,9 @@ def hybrid_retrieve(
         wv_client.query
         .get(collection_name, _PROPERTIES)
         .with_hybrid(
-            query             = query_text,
-            vector            = query_vector,
-            alpha             = ALPHA,
-            query_properties  = ["text", "section^2", "title^1.5"],
+            query  = query_text,
+            vector = query_vector,
+            alpha  = ALPHA,
         )
         .with_limit(top_k)
         .with_additional(["score"])
