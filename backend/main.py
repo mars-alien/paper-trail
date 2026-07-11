@@ -159,9 +159,9 @@ def ingest(body: IngestRequest):
         inserted = 0
         with wv.batch(batch_size=200) as batch:
             for chunk, vec in zip(chunks, embeddings):
-                batch.add_object(
+                batch.add_data_object(
                     class_name  = COLLECTION_NAME,
-                    properties  = {
+                    data_object = {
                         "doc_id":         doc_id,
                         "url":            url,
                         "title":          article["title"],
