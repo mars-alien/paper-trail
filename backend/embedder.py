@@ -23,11 +23,11 @@ def _get_model() -> TextEmbedding:
 
 def embed_query(text: str) -> list[float]:
     model = _get_model()
-    return list(next(model.embed([_QUERY_PREFIX + text])))
+    return [float(x) for x in next(model.embed([_QUERY_PREFIX + text]))]
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     model = _get_model()
-    return [list(v) for v in model.embed(texts)]
+    return [[float(x) for x in v] for v in model.embed(texts)]
